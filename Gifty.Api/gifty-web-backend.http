@@ -1,0 +1,6 @@
+@gifty_web_backend_HostAddress = http://localhost:5140
+
+GET {{gifty_web_backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
