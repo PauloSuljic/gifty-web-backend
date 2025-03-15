@@ -1,6 +1,5 @@
 ﻿using Gifty.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
-using Gifty.Domain.Entities;
 
 namespace Gifty.Api.Controllers
 {
