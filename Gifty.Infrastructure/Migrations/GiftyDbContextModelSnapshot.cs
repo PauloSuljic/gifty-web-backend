@@ -31,7 +31,7 @@ namespace Gifty.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("SharedUrl")
+                    b.Property<string>("ShareCode")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -114,8 +114,8 @@ namespace Gifty.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid?>("ReservedBy")
-                        .HasColumnType("uuid");
+                    b.Property<string>("ReservedBy")
+                        .HasColumnType("text");
 
                     b.Property<Guid>("WishlistId")
                         .HasColumnType("uuid");
