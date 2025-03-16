@@ -85,7 +85,7 @@ public class WishlistItemController : ControllerBase
         else
         {
             item.IsReserved = true;
-            item.ReservedBy = Guid.Parse(userId);
+            item.ReservedBy = userId;
         }
 
         await _context.SaveChangesAsync();

@@ -17,7 +17,7 @@ namespace Gifty.Domain.Entities
         public string Name { get; set; }
         public string? Link { get; set; } // Optional: Product link
         public bool IsReserved { get; set; } = false;
-        public Guid? ReservedBy { get; set; }
+        public string? ReservedBy { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         [ForeignKey("Wishlist")]
         public Guid WishlistId { get; set; }
