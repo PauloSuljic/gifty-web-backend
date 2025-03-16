@@ -1,20 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Gifty.Domain.Entities
 {
     public class WishlistItem
     {
-        public Guid Id { get; set; }
-        public Guid WishlistId { get; set; }
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
+        [Required]
         public string Name { get; set; }
-        public string? Description { get; set; }
-        public decimal? Price { get; set; }
+        public string? Link { get; set; } // Optional: Product link
+        public bool IsReserved { get; set; } = false;
         public Guid? ReservedBy { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public Wishlist Wishlist { get; set; }
+        [ForeignKey("Wishlist")]
+        public Guid WishlistId { get; set; }
+        [JsonIgnore]
+        public Wishlist? Wishlist { get; set; }
     }
 }
