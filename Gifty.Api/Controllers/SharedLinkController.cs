@@ -15,6 +15,49 @@ public class SharedLinkController : ControllerBase
     {
         _context = context;
     }
+    
+    [Authorize]
+    [HttpGet("shared-with-me")]
+    public async Task<IActionResult> GetWishlistsSharedWithMe()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized("User not authenticated.");
+
+        // ✅ Find all wishlists that have been shared (excluding wishlists the user owns)
+        var sharedWishlists = await _context.SharedLinks
+            .Include(l => l.Wishlist)
+            .ThenInclude(w => w.Items)
+            .Include(l => l.Wishlist.User) // ✅ Fetch owner info
+            .Where(l => l.Wishlist.UserId != userId) // ✅ Exclude self-owned wishlists
+            .ToListAsync();
+
+        if (!sharedWishlists.Any()) return Ok(new List<object>());
+
+        // ✅ Format response
+        var result = sharedWishlists
+            .GroupBy(l => new { l.Wishlist.UserId, l.Wishlist.User.Username }) // ✅ Group by owner
+            .Select(group => new
+            {
+                OwnerId = group.Key.UserId,
+                OwnerName = group.Key.Username,
+                Wishlists = group.Select(l => new
+                {
+                    l.Wishlist.Id,
+                    l.Wishlist.Name,
+                    Items = l.Wishlist.Items.Select(i => new
+                    {
+                        i.Id,
+                        i.Name,
+                        i.Link,
+                        i.IsReserved,
+                        i.ReservedBy
+                    }).ToList()
+                }).ToList()
+            }).ToList();
+
+        return Ok(result);
+    }
+
 
     // ✅ Generate a shareable link for a wishlist
     [Authorize]
