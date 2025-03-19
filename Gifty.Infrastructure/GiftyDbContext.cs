@@ -11,6 +11,7 @@ namespace Gifty.Infrastructure
         public DbSet<Wishlist> Wishlists { get; set; }
         public DbSet<WishlistItem> WishlistItems { get; set; }
         public DbSet<SharedLink> SharedLinks { get; set; }
+        public DbSet<SharedLinkVisit> SharedLinkVisits { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

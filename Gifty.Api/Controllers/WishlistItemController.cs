@@ -57,33 +57,34 @@ public class WishlistItemController : ControllerBase
     [HttpPatch("{itemId}/reserve")]
     public async Task<IActionResult> ToggleReserveItem(Guid itemId)
     {
+        var item = await _context.WishlistItems.FindAsync(itemId);
+        if (item == null) return NotFound(new { error = "Item not found." });
+
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return Unauthorized("User not authenticated.");
 
-        var item = await _context.WishlistItems
-            .Include(i => i.Wishlist)
-            .FirstOrDefaultAsync(i => i.Id == itemId);
-
-        if (item == null) return NotFound(new { error = "Item not found." });
-
-        // ✅ Prevent the wishlist owner from reserving their own items
-        if (item.Wishlist.UserId == userId)
-        {
-            return BadRequest(new { error = "You cannot reserve items from your own wishlist." });
-        }
-        
         if (item.IsReserved)
         {
-            if (item.ReservedBy.ToString() != userId)
-            {
-                return Forbid();
-            }
+            // ✅ User is unreserving an item → NO NEED to check the "1 per wishlist" rule
+            if (item.ReservedBy != userId) return Forbid("You cannot unreserve an item reserved by someone else.");
 
             item.IsReserved = false;
             item.ReservedBy = null;
         }
         else
         {
+            // ✅ Check if user has already reserved another item in this wishlist
+            var wishlist = await _context.Wishlists.Include(w => w.Items)
+                .FirstOrDefaultAsync(w => w.Id == item.WishlistId);
+
+            if (wishlist == null) return NotFound("Wishlist not found.");
+
+            bool hasReservedItem = wishlist.Items.Any(i => i.IsReserved && i.ReservedBy == userId);
+
+            if (hasReservedItem)
+                return BadRequest(new { error = "You can only reserve 1 item per wishlist." });
+
+            // ✅ Reserve the item
             item.IsReserved = true;
             item.ReservedBy = userId;
         }
@@ -91,4 +92,5 @@ public class WishlistItemController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(item);
     }
+
 }
