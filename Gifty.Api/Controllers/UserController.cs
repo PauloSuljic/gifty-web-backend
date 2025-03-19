@@ -1,10 +1,11 @@
+using gifty_web_backend.DTOs;
 using Gifty.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Gifty.Infrastructure;
 
-namespace Gifty.Api.Controllers
+namespace gifty_web_backend.Controllers
 {
     [Authorize]
     [Route("api/users")]
@@ -45,12 +46,45 @@ namespace Gifty.Api.Controllers
             {
                 return BadRequest(new { message = "User already exists" });
             }
+            
+            var avatarOptions = new List<string>
+            {
+                "/avatars/avatar1.png",
+                "/avatars/avatar2.png",
+                "/avatars/avatar3.png",
+                "/avatars/avatar4.png",
+                "/avatars/avatar5.png",
+                "/avatars/avatar6.png",
+                "/avatars/avatar7.png",
+                "/avatars/avatar8.png",
+                "/avatars/avatar9.png",
+                "/avatars/avatar10.png"
+            };
+
+            var random = new Random();
+            
+            int randomIndex = random.Next(avatarOptions.Count);
+            user.AvatarUrl = avatarOptions[randomIndex];
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetUserByFirebaseUid), new { firebaseUid = user.Id }, user);
         }
+        
+        [HttpPut("{firebaseUid}")]
+        public async Task<IActionResult> UpdateUserProfile(string firebaseUid, [FromBody] UpdateUserDto model)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == firebaseUid);
+            if (user == null) return NotFound("User not found.");
 
+            user.Username = model.Username;
+            user.Bio = model.Bio;
+            user.AvatarUrl = model.AvatarUrl;
+
+            await _context.SaveChangesAsync();
+            return Ok(user);
+        }
+    
     }    
 }
