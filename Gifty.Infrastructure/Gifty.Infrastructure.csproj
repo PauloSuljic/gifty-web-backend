@@ -16,4 +16,8 @@
     <ProjectReference Include="..\Gifty.Domain\Gifty.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Migrations\" />
+  </ItemGroup>
+
 </Project>
