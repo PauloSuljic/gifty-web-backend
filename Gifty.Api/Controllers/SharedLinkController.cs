@@ -36,11 +36,12 @@ public class SharedLinkController : ControllerBase
 
         // ✅ Format response
         var result = visitedWishlists
-            .GroupBy(v => new { v.SharedLink.Wishlist.UserId, v.SharedLink.Wishlist.User.Username })
+            .GroupBy(v => new { v.SharedLink.Wishlist.UserId, v.SharedLink.Wishlist.User?.Username, v.SharedLink.Wishlist.User?.AvatarUrl })
             .Select(group => new
             {
                 OwnerId = group.Key.UserId,
                 OwnerName = group.Key.Username,
+                OwnerAvatar = group.Key.AvatarUrl,
                 Wishlists = group.Select(v => new
                 {
                     v.SharedLink.Wishlist.Id,

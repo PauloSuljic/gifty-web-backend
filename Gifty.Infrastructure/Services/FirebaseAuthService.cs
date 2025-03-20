@@ -34,6 +34,7 @@ namespace Gifty.Infrastructure.Services
                         Username = firebaseUser.DisplayName ?? $"user_{firebaseUid.Substring(0, 6)}",
                         AvatarUrl = firebaseUser.PhotoUrl,  // Optional: store Firebase avatar
                         Bio = "",
+                        Email = firebaseUser.Email,
                         CreatedAt = DateTime.UtcNow
                     };
 

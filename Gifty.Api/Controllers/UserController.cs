@@ -35,6 +35,7 @@ namespace gifty_web_backend.Controllers
                 id = user.Id,
                 username = user.Username,
                 bio = user.Bio,
+                email = user.Email,
                 avatarUrl = user.AvatarUrl
             });
         }
