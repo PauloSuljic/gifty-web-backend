@@ -27,7 +27,7 @@ jobs:
         run: dotnet build Gifty.Api/Gifty.Api.csproj --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish Gifty.Api/Gifty.Api.csproj -c Release -o ./publish"
+        run: dotnet publish Gifty.Api/Gifty.Api.csproj -c Release -o ./publish
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
