@@ -11,22 +11,36 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
-// ✅ 1. Add Firebase Admin SDK (For Server-Side Operations)
+// ✅ Load environment variables (Needed for Azure Connection String)
+builder.Configuration.AddEnvironmentVariables();
+
+// ✅ 1. Read Connection String
+var connectionString = Environment.GetEnvironmentVariable("DefaultAzureConnection") 
+                       ?? configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new Exception("❌ No connection string found! Make sure to set 'DefaultConnection' in Azure or appsettings.json.");
+}
+
+// ✅ 2. Initialize Firebase Admin SDK
 FirebaseApp.Create(new AppOptions
 {
     Credential = GoogleCredential.FromFile("firebase-service-account.json")
 });
 
-// ✅ 2. Add Services
+// ✅ 3. Add Services
 builder.Services.AddScoped<FirebaseAuthService>();
+
+// ✅ 4. Configure PostgreSQL Database
 builder.Services.AddDbContext<GiftyDbContext>(options =>
-    options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ✅ 3. Enable Authentication with Firebase JWT
+// ✅ 5. Enable Authentication with Firebase JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -43,12 +57,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ✅ 4. Enable CORS (So Frontend Can Access API)
+// ✅ 6. Enable CORS (Allow frontend to access API)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin() // Allow frontend requests (update for security if needed)
+        policy.AllowAnyOrigin() 
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -56,7 +70,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// ✅ 5. Configure Middleware
+// ✅ 7. Configure Middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -66,7 +80,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 
-app.UseAuthentication(); // Enable Firebase JWT Authentication
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
