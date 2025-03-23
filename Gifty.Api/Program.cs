@@ -15,7 +15,7 @@ var configuration = builder.Configuration;
 builder.Configuration.AddEnvironmentVariables();
 
 // ✅ 1. Read Connection String
-var connectionString = Environment.GetEnvironmentVariable("DefaultAzureConnection") 
+var connectionString = Environment.GetEnvironmentVariable("DefaultConnection") 
                        ?? configuration.GetConnectionString("DefaultConnection");
 
 if (string.IsNullOrEmpty(connectionString))
@@ -58,13 +58,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ✅ 6. Enable CORS (Allow frontend to access API)
+var allowedOrigin = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN") 
+                    ?? "http://localhost:5173"; // fallback for dev
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin() 
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy.WithOrigins(allowedOrigin)
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 
