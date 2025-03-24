@@ -125,6 +125,7 @@ public class SharedLinkController : ControllerBase
             sharedLink.Wishlist.Name,
             OwnerId = sharedLink.Wishlist.UserId,
             OwnerName = sharedLink.Wishlist.User?.Username, 
+            OwnerAvatar = sharedLink.Wishlist.User?.AvatarUrl,
             Items = sharedLink.Wishlist.Items.Select(i => new
             {
                 i.Id,

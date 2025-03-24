@@ -63,4 +63,22 @@ public class WishlistController : ControllerBase
 
         return NoContent();
     }
+    
+    // ✅ PATCH: Rename Wishlist
+    [HttpPatch("{wishlistId}")]
+    public async Task<IActionResult> RenameWishlist(Guid wishlistId, [FromBody] string newName)
+    {
+        var wishlist = await _context.Wishlists.FindAsync(wishlistId);
+        if (wishlist == null)
+            return NotFound(new { error = "Wishlist not found." });
+
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (wishlist.UserId != userId)
+            return Forbid();
+
+        wishlist.Name = newName;
+        await _context.SaveChangesAsync();
+        return Ok(wishlist);
+    }
+
 }
