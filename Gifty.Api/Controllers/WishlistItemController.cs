@@ -92,5 +92,30 @@ public class WishlistItemController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(item);
     }
+    
+    // ✅ Update an existing wishlist item (name and/or link)
+    [HttpPatch("{itemId}")]
+    public async Task<IActionResult> UpdateWishlistItem(Guid itemId, [FromBody] WishlistItem updated)
+    {
+        var item = await _context.WishlistItems.FindAsync(itemId);
+        if (item == null) return NotFound(new { error = "Item not found." });
+
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized("User not authenticated.");
+
+        var wishlist = await _context.Wishlists.FindAsync(item.WishlistId);
+        if (wishlist == null || wishlist.UserId != userId)
+            return Forbid("You are not allowed to edit this item.");
+
+        if (!string.IsNullOrWhiteSpace(updated.Name))
+            item.Name = updated.Name;
+
+        if (!string.IsNullOrWhiteSpace(updated.Link))
+            item.Link = updated.Link;
+
+        await _context.SaveChangesAsync();
+        return Ok(item);
+    }
+
 
 }
