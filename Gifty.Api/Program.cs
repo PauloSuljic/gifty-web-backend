@@ -58,14 +58,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ✅ 6. Enable CORS (Allow frontend to access API)
-var allowedOrigin = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN") 
-                    ?? "http://localhost:5173"; // fallback for dev
+var allowedOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN")?
+                         .Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                     ?? new[] { "http://localhost:5173" };
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(allowedOrigin)
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
