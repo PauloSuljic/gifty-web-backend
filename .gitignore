@@ -6,9 +6,6 @@
 # Local settings
 appsettings.Development.json
 
-# Firebase secret
-firebase-service-account.json
-
 # User-specific files
 *.rsuser
 *.suo
