@@ -15,8 +15,7 @@ var configuration = builder.Configuration;
 builder.Configuration.AddEnvironmentVariables();
 
 // ✅ 1. Read Connection String
-var connectionString = Environment.GetEnvironmentVariable("DefaultConnection") 
-                       ?? configuration.GetConnectionString("DefaultConnection");
+var connectionString = configuration.GetConnectionString("DefaultConnection");
 
 if (string.IsNullOrEmpty(connectionString))
 {
@@ -24,10 +23,15 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 // ✅ 2. Initialize Firebase Admin SDK
-FirebaseApp.Create(new AppOptions
+var firebaseJson = builder.Configuration["FIREBASE_CREDENTIALS"];
+
+if (string.IsNullOrWhiteSpace(firebaseJson))
 {
-    Credential = GoogleCredential.FromFile("firebase-service-account.json")
-});
+    throw new Exception("❌ Firebase credentials not found. Set FIREBASE_CREDENTIALS as an environment variable.");
+}
+
+var googleCredential = GoogleCredential.FromJson(firebaseJson);
+FirebaseApp.Create(new AppOptions { Credential = googleCredential });
 
 // ✅ 3. Add Services
 builder.Services.AddScoped<FirebaseAuthService>();
