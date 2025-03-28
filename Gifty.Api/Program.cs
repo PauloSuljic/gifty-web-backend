@@ -15,7 +15,8 @@ var configuration = builder.Configuration;
 builder.Configuration.AddEnvironmentVariables();
 
 // ✅ 1. Read Connection String
-var connectionString = configuration.GetConnectionString("DefaultConnection");
+var connectionString = Environment.GetEnvironmentVariable("DefaultConnection") 
+                       ?? configuration.GetConnectionString("DefaultConnection");
 
 if (string.IsNullOrEmpty(connectionString))
 {
@@ -23,15 +24,10 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 // ✅ 2. Initialize Firebase Admin SDK
-var firebaseJson = builder.Configuration["FIREBASE_CREDENTIALS"];
-
-if (string.IsNullOrWhiteSpace(firebaseJson))
+FirebaseApp.Create(new AppOptions
 {
-    throw new Exception("❌ Firebase credentials not found. Set FIREBASE_CREDENTIALS as an environment variable.");
-}
-
-var googleCredential = GoogleCredential.FromJson(firebaseJson);
-FirebaseApp.Create(new AppOptions { Credential = googleCredential });
+    Credential = GoogleCredential.FromFile("firebase-service-account.json")
+});
 
 // ✅ 3. Add Services
 builder.Services.AddScoped<FirebaseAuthService>();
@@ -62,28 +58,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ✅ 6. Enable CORS (Allow frontend to access API)
-var allowedOriginsRaw = builder.Configuration["ALLOWED_ORIGIN"];
-
-if (string.IsNullOrWhiteSpace(allowedOriginsRaw))
-{
-    Console.WriteLine("❌ ALLOWED_ORIGIN is not set or empty!");
-    throw new Exception("Missing ALLOWED_ORIGIN environment variable");
-}
-
-var allowedOrigins = allowedOriginsRaw
-    .Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-Console.WriteLine("✅ Loaded ALLOWED_ORIGIN:");
-foreach (var origin in allowedOrigins)
-    Console.WriteLine(" - " + origin);
+var allowedOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN")?
+                         .Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                     ?? new[] { "http://localhost:5173" };
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 
@@ -95,17 +80,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.Use(async (context, next) =>
-{
-    if (context.Request.Method == "OPTIONS")
-    {
-        Console.WriteLine($"👉 OPTIONS request from Origin: {context.Request.Headers["Origin"]}");
-    }
-
-    await next();
-});
-
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
