@@ -62,17 +62,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ✅ 6. Enable CORS (Allow frontend to access API)
-var allowedOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN")?
-                         .Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                     ?? new[] { "http://localhost:5173" };
+var allowedOriginsRaw = builder.Configuration["ALLOWED_ORIGIN"];
+
+if (string.IsNullOrWhiteSpace(allowedOriginsRaw))
+{
+    Console.WriteLine("❌ ALLOWED_ORIGIN is not set or empty!");
+    throw new Exception("Missing ALLOWED_ORIGIN environment variable");
+}
+
+var allowedOrigins = allowedOriginsRaw
+    .Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+Console.WriteLine("✅ Loaded ALLOWED_ORIGIN:");
+foreach (var origin in allowedOrigins)
+    Console.WriteLine(" - " + origin);
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(allowedOrigins)
-            .AllowAnyMethod()
-            .AllowAnyHeader();
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 
@@ -84,6 +95,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "OPTIONS")
+    {
+        Console.WriteLine($"👉 OPTIONS request from Origin: {context.Request.Headers["Origin"]}");
+    }
+
+    await next();
+});
+
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
