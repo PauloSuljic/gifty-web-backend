@@ -12,7 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
 // ✅ Load environment variables (Needed for Azure Connection String)
-builder.Configuration.AddEnvironmentVariables();
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddUserSecrets<Program>() // 🔐 required for local secrets
+    .AddEnvironmentVariables();
 
 // ✅ 1. Read Connection String
 var connectionString = Environment.GetEnvironmentVariable("DefaultConnection") 
@@ -24,9 +29,16 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 // ✅ 2. Initialize Firebase Admin SDK
+var firebaseJson = configuration["Firebase:CredentialsJson"];
+
+if (string.IsNullOrWhiteSpace(firebaseJson))
+{
+    throw new Exception("❌ Firebase credentials not found. Make sure 'Firebase:CredentialsJson' is in user-secrets or env vars.");
+}
+
 FirebaseApp.Create(new AppOptions
 {
-    Credential = GoogleCredential.FromFile("firebase-service-account.json")
+    Credential = GoogleCredential.FromJson(firebaseJson)
 });
 
 // ✅ 3. Add Services

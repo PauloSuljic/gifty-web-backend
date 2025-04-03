@@ -86,6 +86,22 @@ namespace gifty_web_backend.Controllers
             await _context.SaveChangesAsync();
             return Ok(user);
         }
-    
+        
+        // DELETE: api/users/{firebaseUid}
+        [HttpDelete("{firebaseUid}")]
+        public async Task<IActionResult> DeleteUser(string firebaseUid)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == firebaseUid);
+
+            if (user == null)
+            {
+                return NotFound(new { message = "User not found" });
+            }
+
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
     }    
 }
