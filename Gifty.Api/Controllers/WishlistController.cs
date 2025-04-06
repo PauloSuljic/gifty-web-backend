@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using gifty_web_backend.DTOs;
 using Gifty.Infrastructure;
 using Gifty.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -40,6 +41,7 @@ public class WishlistController : ControllerBase
         var wishlists = await _context.Wishlists
             .Where(w => w.UserId == userId)
             .Include(w => w.Items)
+            .OrderBy(w => w.Order)
             .ToListAsync();
 
         return Ok(wishlists);
@@ -80,5 +82,28 @@ public class WishlistController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(wishlist);
     }
+    
+    // ✅ PUT: Reorder wishlists
+    [HttpPut("reorder")]
+    public async Task<IActionResult> ReorderWishlists([FromBody] List<ReorderWishlistDto> reordered)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId == null) return Unauthorized("User not authenticated.");
 
+        var wishlistIds = reordered.Select(r => r.Id).ToList();
+
+        var wishlists = await _context.Wishlists
+            .Where(w => w.UserId == userId && wishlistIds.Contains(w.Id))
+            .ToListAsync();
+
+        foreach (var wishlist in wishlists)
+        {
+            var match = reordered.First(r => r.Id == wishlist.Id);
+            wishlist.Order = match.Order;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok();
+    }
+    
 }

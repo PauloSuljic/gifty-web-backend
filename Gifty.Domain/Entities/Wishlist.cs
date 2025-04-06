@@ -23,5 +23,6 @@ namespace Gifty.Domain.Entities
         public User? User { get; set; }
         public ICollection<WishlistItem> Items { get; set; } = new List<WishlistItem>();
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public int Order { get; set; }
     }
 }
