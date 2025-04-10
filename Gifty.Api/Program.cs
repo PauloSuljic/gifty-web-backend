@@ -32,19 +32,24 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 // ✅ 2. Firebase Admin SDK
-var firebaseJson = configuration["Firebase:CredentialsJson"];
+var useTestAuth = builder.Configuration["UseTestAuth"];
 
-if (string.IsNullOrWhiteSpace(firebaseJson))
+if (useTestAuth != "true")
 {
-    throw new Exception("❌ Firebase credentials not found.");
-}
+    var firebaseJson = configuration["Firebase:CredentialsJson"];
 
-if (FirebaseApp.DefaultInstance == null)
-{
-    FirebaseApp.Create(new AppOptions
+    if (string.IsNullOrWhiteSpace(firebaseJson))
     {
-        Credential = GoogleCredential.FromJson(firebaseJson)
-    });
+        throw new Exception("❌ Firebase credentials not found.");
+    }
+
+    if (FirebaseApp.DefaultInstance == null)
+    {
+        FirebaseApp.Create(new AppOptions
+        {
+            Credential = GoogleCredential.FromJson(firebaseJson)
+        });
+    }
 }
 
 // ✅ 3. Services
