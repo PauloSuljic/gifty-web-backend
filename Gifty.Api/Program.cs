@@ -119,9 +119,12 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ✅ Redis (only in Production – skip for local where Docker is used)
-if (!builder.Environment.IsDevelopment())
+// ✅ Redis Setup
+var isRunningInCi = Environment.GetEnvironmentVariable("CI") == "true";
+
+if (!builder.Environment.IsDevelopment() && !isRunningInCi)
 {
+    // Production Redis (e.g. Azure)
     builder.Services.AddStackExchangeRedisCache(options =>
     {
         var redisConnection = builder.Configuration["Redis"];
@@ -133,12 +136,17 @@ if (!builder.Environment.IsDevelopment())
         options.Configuration = redisConnection;
     });
 }
+else if (isRunningInCi)
+{
+    // ✅ CI fallback – use in-memory caching instead of Redis
+    builder.Services.AddDistributedMemoryCache();
+}
 else
 {
-    // 🔧 Local Redis (running via Docker on port 6379)
+    // ✅ Local Redis (e.g. Docker or dev environment)
     builder.Services.AddStackExchangeRedisCache(options =>
     {
-        options.Configuration = "localhost:6379"; // or "host.docker.internal:6379" on Mac/WSL
+        options.Configuration = "localhost:6379"; // Adjust if needed for Docker/Mac/WSL
     });
 }
 
