@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using FirebaseAdmin;
+using Gifty.Api.Utils;
 using Google.Apis.Auth.OAuth2;
 using Gifty.Infrastructure;
 using Gifty.Infrastructure.Services;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 #if DEBUG
-using gifty_web_backend.Utils;
+using Gifty.Api.Utils;
 #endif
 
 [assembly: InternalsVisibleTo("Gifty.Tests")]

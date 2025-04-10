@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Configuration;
 using Gifty.Infrastructure;
-using gifty_web_backend.Utils;
+using Gifty.Api.Utils;
 
 namespace Gifty.Tests.Integration
 {
