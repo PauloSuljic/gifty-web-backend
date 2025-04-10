@@ -4,6 +4,7 @@ using System.Security.Claims;
 using gifty_web_backend.DTOs;
 using Gifty.Infrastructure;
 using Gifty.Domain.Entities;
+using Gifty.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 
 [Authorize]
@@ -12,21 +13,31 @@ using Microsoft.AspNetCore.Authorization;
 public class WishlistController : ControllerBase
 {
     private readonly GiftyDbContext _context;
+    private readonly IRedisCacheService _cache;
 
-    public WishlistController(GiftyDbContext context)
+    public WishlistController(GiftyDbContext context, IRedisCacheService cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     // ✅ Create a Wishlist
     [HttpPost]
-    public async Task<IActionResult> CreateWishlist([FromBody] Wishlist wishlist)
+    public async Task<IActionResult> CreateWishlist([FromBody] CreateWishlistDto dto)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null) return Unauthorized("User not authenticated.");
-        
+
+        var wishlist = new Wishlist
+        {
+            Name = dto.Name,
+            IsPublic = dto.IsPublic,
+            UserId = userId
+        };
+
         _context.Wishlists.Add(wishlist);
         await _context.SaveChangesAsync();
+        await _cache.RemoveAsync($"wishlist:user:{userId}");
 
         return CreatedAtAction(nameof(GetUserWishlists), new { userId }, wishlist);
     }
@@ -38,11 +49,22 @@ public class WishlistController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null) return Unauthorized("User not authenticated.");
 
+        string cacheKey = $"wishlist:user:{userId}";
+
+        // ✅ Try Redis first
+        var cached = await _cache.GetAsync<List<Wishlist>>(cacheKey);
+        if (cached != null)
+            return Ok(cached);
+
+        // 🐢 Fallback to DB
         var wishlists = await _context.Wishlists
             .Where(w => w.UserId == userId)
             .Include(w => w.Items)
             .OrderBy(w => w.Order)
             .ToListAsync();
+
+        // ✅ Save to Redis
+        await _cache.SetAsync(cacheKey, wishlists);
 
         return Ok(wishlists);
     }
@@ -62,7 +84,7 @@ public class WishlistController : ControllerBase
 
         _context.Wishlists.Remove(wishlist);
         await _context.SaveChangesAsync();
-
+        await _cache.RemoveAsync($"wishlist:user:{userId}");
         return NoContent();
     }
     
@@ -80,6 +102,7 @@ public class WishlistController : ControllerBase
 
         wishlist.Name = newName;
         await _context.SaveChangesAsync();
+        await _cache.RemoveAsync($"wishlist:user:{userId}");
         return Ok(wishlist);
     }
     
@@ -103,6 +126,7 @@ public class WishlistController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
+        await _cache.RemoveAsync($"wishlist:user:{userId}");
         return Ok();
     }
     
