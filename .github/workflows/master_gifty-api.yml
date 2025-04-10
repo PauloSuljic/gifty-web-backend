@@ -53,8 +53,10 @@ jobs:
       - name: Run tests
         run: dotnet test Gifty.Tests/Gifty.Tests.csproj --configuration Release --verbosity normal
         env:
-          DefaultConnection: "Host=localhost;Port=5432;Database=gifty_test;Username=postgres;Password=password"
-          UseTestAuth: "true" # ✅ This fixes the Firebase error during tests
+          DefaultConnection: "Host=localhost;Port=5433;Database=GiftyDb;Username=postgres;Password=postgrespassword123"
+          Redis: "localhost:6379"
+          UseTestAuth: "true"
+          ASPNETCORE_ENVIRONMENT: "Development"
 
   deploy:
     runs-on: windows-latest
