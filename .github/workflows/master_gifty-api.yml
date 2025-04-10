@@ -52,6 +52,8 @@ jobs:
 
       - name: Run tests
         run: dotnet test Gifty.Tests/Gifty.Tests.csproj --configuration Release --verbosity normal
+        env:
+          DefaultConnection: "Host=localhost;Port=5432;Database=gifty_test;Username=postgres;Password=password" # adjust to match your local/test setup
 
   deploy:
     runs-on: windows-latest
