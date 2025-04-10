@@ -1,4 +1,4 @@
-name: Build, Test and Deploy ASP.Net Core app to Azure Web App - gifty-api
+name: Build, Test and Deploy ASP.NET Core App to Azure - Gifty API
 
 on:
   push:
@@ -13,7 +13,8 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -21,50 +22,42 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore Gifty.Api/Gifty.Api.csproj
 
-      - name: Build solution
-        run: dotnet build --configuration Release --no-restore
+      - name: Build API
+        run: dotnet build Gifty.Api/Gifty.Api.csproj --configuration Release --no-restore
+
+      - name: Publish API
+        run: dotnet publish Gifty.Api/Gifty.Api.csproj --configuration Release --no-build --output ./publish
+
+      - name: Upload publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gifty-api
+          path: ./publish
 
   test:
     runs-on: windows-latest
     needs: build
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
 
-      - name: Run unit and integration tests
-        run: dotnet test --no-build --configuration Release --verbosity normal
+      - name: Restore test project dependencies
+        run: dotnet restore Gifty.Tests/Gifty.Tests.csproj
 
-  publish:
-    runs-on: windows-latest
-    needs: test
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.x'
-
-      - name: dotnet publish
-        run: dotnet publish Gifty.Api/Gifty.Api.csproj -c Release -o ./publish
-
-      - name: Upload artifact for deployment
-        uses: actions/upload-artifact@v4
-        with:
-          name: .net-app
-          path: ./publish
+      - name: Run tests
+        run: dotnet test Gifty.Tests/Gifty.Tests.csproj --configuration Release --no-build --verbosity normal
 
   deploy:
     runs-on: windows-latest
-    needs: publish
+    needs: [build, test] # Only deploy if build & test pass
     environment:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
@@ -73,10 +66,10 @@ jobs:
       contents: read
 
     steps:
-      - name: Download artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: .net-app
+          name: gifty-api
 
       - name: Login to Azure
         uses: azure/login@v2
