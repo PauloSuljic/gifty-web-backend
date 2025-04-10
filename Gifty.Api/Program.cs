@@ -9,10 +9,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-#if DEBUG
-using Gifty.Api.Utils;
-#endif
-
 [assembly: InternalsVisibleTo("Gifty.Tests")]
 
 var builder = WebApplication.CreateBuilder(args);
