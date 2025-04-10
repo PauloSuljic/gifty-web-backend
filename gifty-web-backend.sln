@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gifty.Domain", "Gifty.Domai
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gifty.Infrastructure", "Gifty.Infrastructure\Gifty.Infrastructure.csproj", "{724524B3-F60A-4CDD-B6A4-07EE2102F66D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gifty.Tests", "Gifty.Tests\Gifty.Tests.csproj", "{B06DABDB-28DC-43EF-9B42-FE2BC4352A67}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{724524B3-F60A-4CDD-B6A4-07EE2102F66D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{724524B3-F60A-4CDD-B6A4-07EE2102F66D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{724524B3-F60A-4CDD-B6A4-07EE2102F66D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B06DABDB-28DC-43EF-9B42-FE2BC4352A67}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B06DABDB-28DC-43EF-9B42-FE2BC4352A67}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B06DABDB-28DC-43EF-9B42-FE2BC4352A67}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B06DABDB-28DC-43EF-9B42-FE2BC4352A67}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

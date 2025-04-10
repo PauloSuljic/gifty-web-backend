@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Gifty.Domain.Entities;
 using Gifty.Infrastructure;
+using Gifty.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 
 [Authorize]
@@ -11,10 +12,12 @@ using Microsoft.AspNetCore.Authorization;
 public class WishlistItemController : ControllerBase
 {
     private readonly GiftyDbContext _context;
+    private readonly IRedisCacheService _cache;
 
-    public WishlistItemController(GiftyDbContext context)
+    public WishlistItemController(GiftyDbContext context, IRedisCacheService cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     // ✅ Add a new item to a wishlist
@@ -29,6 +32,7 @@ public class WishlistItemController : ControllerBase
 
         _context.WishlistItems.Add(item);
         await _context.SaveChangesAsync();
+        await _cache.RemoveAsync($"wishlist-items:{item.WishlistId}");
 
         return Ok(item);
     }
@@ -37,19 +41,37 @@ public class WishlistItemController : ControllerBase
     [HttpGet("{wishlistId}")]
     public async Task<IActionResult> GetWishlistItems(Guid wishlistId)
     {
-        var items = await _context.WishlistItems.Where(i => i.WishlistId == wishlistId).ToListAsync();
+        var cacheKey = $"wishlist-items:{wishlistId}";
+
+        // ✅ Try Redis first
+        var cached = await _cache.GetAsync<List<WishlistItem>>(cacheKey);
+        if (cached != null)
+            return Ok(cached);
+
+        // 🐢 Fallback to DB
+        var items = await _context.WishlistItems
+            .Where(i => i.WishlistId == wishlistId)
+            .ToListAsync();
+
+        // ✅ Save in cache
+        await _cache.SetAsync(cacheKey, items, TimeSpan.FromMinutes(10));
+
         return Ok(items);
     }
 
-    // ✅ Delete an item from a wishlist
     [HttpDelete("{itemId}")]
     public async Task<IActionResult> DeleteWishlistItem(Guid itemId)
     {
         var item = await _context.WishlistItems.FindAsync(itemId);
         if (item == null) return NotFound("Item not found.");
 
+        var wishlistId = item.WishlistId;
+
         _context.WishlistItems.Remove(item);
         await _context.SaveChangesAsync();
+
+        await _cache.RemoveAsync($"wishlist-items:{wishlistId}");
+
         return NoContent();
     }
 
@@ -65,31 +87,31 @@ public class WishlistItemController : ControllerBase
 
         if (item.IsReserved)
         {
-            // ✅ User is unreserving an item → NO NEED to check the "1 per wishlist" rule
-            if (item.ReservedBy != userId) return Forbid("You cannot unreserve an item reserved by someone else.");
+            if (item.ReservedBy != userId)
+                return Forbid("You cannot unreserve an item reserved by someone else.");
 
             item.IsReserved = false;
             item.ReservedBy = null;
         }
         else
         {
-            // ✅ Check if user has already reserved another item in this wishlist
-            var wishlist = await _context.Wishlists.Include(w => w.Items)
+            var wishlist = await _context.Wishlists
+                .Include(w => w.Items)
                 .FirstOrDefaultAsync(w => w.Id == item.WishlistId);
 
             if (wishlist == null) return NotFound("Wishlist not found.");
 
             bool hasReservedItem = wishlist.Items.Any(i => i.IsReserved && i.ReservedBy == userId);
-
             if (hasReservedItem)
                 return BadRequest(new { error = "You can only reserve 1 item per wishlist." });
 
-            // ✅ Reserve the item
             item.IsReserved = true;
             item.ReservedBy = userId;
         }
 
         await _context.SaveChangesAsync();
+        await _cache.RemoveAsync($"wishlist-items:{item.WishlistId}");
+
         return Ok(item);
     }
     
@@ -114,8 +136,9 @@ public class WishlistItemController : ControllerBase
             item.Link = updated.Link;
 
         await _context.SaveChangesAsync();
+        await _cache.RemoveAsync($"wishlist-items:{item.WishlistId}");
+
         return Ok(item);
     }
-
-
+    
 }

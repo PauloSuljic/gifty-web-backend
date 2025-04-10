@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Gifty.Domain.Entities;
 using Gifty.Infrastructure;
+using Gifty.Infrastructure.Services;
+using Gifty.Tests.DTOs;
 using Microsoft.AspNetCore.Authorization;
 
 [Route("api/shared-links")]
@@ -10,10 +12,12 @@ using Microsoft.AspNetCore.Authorization;
 public class SharedLinkController : ControllerBase
 {
     private readonly GiftyDbContext _context;
+    private readonly IRedisCacheService _cache;
 
-    public SharedLinkController(GiftyDbContext context)
+    public SharedLinkController(GiftyDbContext context, IRedisCacheService cache)
     {
         _context = context;
+        _cache = cache;
     }
     
     [Authorize]
@@ -23,7 +27,14 @@ public class SharedLinkController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return Unauthorized("User not authenticated.");
 
-        // ✅ Get wishlists where this user has visited the shared link
+        string cacheKey = $"shared-with-me:{userId}";
+
+        // ✅ Try cache
+        var cached = await _cache.GetAsync<object>(cacheKey);
+        if (cached != null)
+            return Ok(cached);
+
+        // 🐢 DB fallback
         var visitedWishlists = await _context.SharedLinkVisits
             .Include(v => v.SharedLink)
             .ThenInclude(l => l.Wishlist)
@@ -34,9 +45,13 @@ public class SharedLinkController : ControllerBase
 
         if (!visitedWishlists.Any()) return Ok(new List<object>());
 
-        // ✅ Format response
         var result = visitedWishlists
-            .GroupBy(v => new { v.SharedLink.Wishlist.UserId, v.SharedLink.Wishlist.User?.Username, v.SharedLink.Wishlist.User?.AvatarUrl })
+            .GroupBy(v => new
+            {
+                v.SharedLink.Wishlist.UserId,
+                v.SharedLink.Wishlist.User?.Username,
+                v.SharedLink.Wishlist.User?.AvatarUrl
+            })
             .Select(group => new
             {
                 OwnerId = group.Key.UserId,
@@ -57,6 +72,9 @@ public class SharedLinkController : ControllerBase
                 }).ToList()
             }).ToList();
 
+        // ✅ Store in Redis
+        await _cache.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+
         return Ok(result);
     }
 
@@ -70,61 +88,52 @@ public class SharedLinkController : ControllerBase
 
         var wishlist = await _context.Wishlists.FindAsync(wishlistId);
         if (wishlist == null) return NotFound("Wishlist not found.");
-        if (wishlist.UserId != userId) return Forbid(); // ✅ Only the owner can generate a link
+        if (wishlist.UserId != userId) return Forbid(); // Only the owner can generate a link
 
-        // ✅ Check if a share link already exists
         var existingLink = await _context.SharedLinks.FirstOrDefaultAsync(l => l.WishlistId == wishlistId);
-        if (existingLink != null) return Ok(new { shareCode = existingLink.ShareCode });
+        if (existingLink != null)
+        {
+            return Ok(new ShareLinkResponseDto(existingLink.ShareCode));
+        }
 
-        // ✅ Create a new shared link
         var sharedLink = new SharedLink { WishlistId = wishlistId };
         _context.SharedLinks.Add(sharedLink);
         await _context.SaveChangesAsync();
 
-        return Ok(new { shareCode = sharedLink.ShareCode });
+        return Ok(new ShareLinkResponseDto(sharedLink.ShareCode));
     }
+
 
     // ✅ Retrieve a wishlist using a shareable link
     [AllowAnonymous] 
     [HttpGet("{shareCode}")]
     public async Task<IActionResult> GetSharedWishlist(string shareCode)
     {
-        // ✅ Extract userId, but don't fail if null (guest user)
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; // ✅ Safe extraction
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+        string cacheKey = $"shared-link:{shareCode}";
+
+        // ✅ Check cache first
+        var cached = await _cache.GetAsync<object>(cacheKey);
+        if (cached != null)
+            return Ok(cached);
+
+        // 🐢 DB fallback
         var sharedLink = await _context.SharedLinks
             .Include(l => l.Wishlist)
             .ThenInclude(w => w.Items)
             .Include(l => l.Wishlist.User)
             .FirstOrDefaultAsync(l => l.ShareCode == shareCode);
 
-        if (sharedLink == null) return NotFound(new { error = "Invalid shared link." });
+        if (sharedLink == null)
+            return NotFound(new { error = "Invalid shared link." });
 
-        // ✅ Only store a visit if the user is logged in
-        if (!string.IsNullOrEmpty(userId) && userId != sharedLink.Wishlist.UserId)
-        {
-            var existingVisit = await _context.SharedLinkVisits
-                .FirstOrDefaultAsync(v => v.UserId == userId && v.SharedLinkId == sharedLink.Id);
-
-            if (existingVisit == null)
-            {
-                var newVisit = new SharedLinkVisit
-                {
-                    SharedLinkId = sharedLink.Id,
-                    UserId = userId
-                };
-                _context.SharedLinkVisits.Add(newVisit);
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        // ✅ Return wishlist details (even for guests)
-        return Ok(new
+        var response = new
         {
             sharedLink.Wishlist.Id,
             sharedLink.Wishlist.Name,
             OwnerId = sharedLink.Wishlist.UserId,
-            OwnerName = sharedLink.Wishlist.User?.Username, 
+            OwnerName = sharedLink.Wishlist.User?.Username,
             OwnerAvatar = sharedLink.Wishlist.User?.AvatarUrl,
             Items = sharedLink.Wishlist.Items.Select(i => new
             {
@@ -134,8 +143,29 @@ public class SharedLinkController : ControllerBase
                 i.IsReserved,
                 i.ReservedBy
             }).ToList()
-        });
+        };
+
+        // ✅ Store in Redis
+        await _cache.SetAsync(cacheKey, response, TimeSpan.FromMinutes(10));
+
+        // 🧠 Log shared visit (don't cache this part)
+        if (!string.IsNullOrEmpty(userId) && userId != sharedLink.Wishlist.UserId)
+        {
+            var visited = await _context.SharedLinkVisits
+                .FirstOrDefaultAsync(v => v.UserId == userId && v.SharedLinkId == sharedLink.Id);
+
+            if (visited == null)
+            {
+                _context.SharedLinkVisits.Add(new SharedLinkVisit
+                {
+                    SharedLinkId = sharedLink.Id,
+                    UserId = userId
+                });
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        return Ok(response);
     }
-
-
+    
 }
