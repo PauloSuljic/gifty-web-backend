@@ -1,4 +1,3 @@
-#if DEBUG
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -37,4 +36,3 @@ namespace Gifty.Api.Utils
         }
     }
 }
-#endif
