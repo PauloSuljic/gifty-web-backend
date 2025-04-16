@@ -1,3 +1,7 @@
+📦 This repository has been archived.  
+🎯 The project has been merged into a monorepo: [gifty-app](https://github.com/PauloSuljic/gifty-app)
+
+
 # 🎁 Gifty Backend API
 
 > The backend API for Gifty, built with **ASP.NET Core**, **PostgreSQL**, and **Firebase Auth**.
